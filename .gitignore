@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+
+pytorch_training_curves.png
+tf_training_curves.png
+
+submission_build/
+*_submission*.zip

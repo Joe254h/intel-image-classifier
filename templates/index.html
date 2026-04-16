@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SceneNet - Intel Image Classifier</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Archivo:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #F2EDE4;
+  --ink: #0F0E0C;
+  --rust: #C84B2F;
+  --sage: #3A5C32;
+  --border: rgba(15,14,12,0.15);
+  --border-strong: rgba(15,14,12,0.35);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--cream); color: var(--ink); font-family: 'Archivo', sans-serif; overflow-x: hidden; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 3rem; border-bottom: 2px solid var(--ink);
+  position: sticky; top: 0; background: var(--cream); z-index: 100;
+}
+.header-live { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink); }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--rust); animation: blink 2s ease infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.header-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.1em; color: var(--ink); }
+.header-nav { display: flex; gap: 2rem; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+
+.hero { padding: 3.5rem 3rem 2rem; border-bottom: 1px solid var(--border-strong); }
+.hero-eyebrow { font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rust); margin-bottom: 1rem; text-align: center; }
+.hero-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(5rem, 12vw, 10rem); line-height: 0.88; letter-spacing: 0.02em; color: var(--ink); text-align: center; }
+.hero-title .red { color: var(--rust); }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 2.5rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-strong); }
+.meta-item { font-size: 14px; font-weight: 400; color: var(--ink); }
+.meta-item strong { font-weight: 700; color: var(--ink); }
+
+.main { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border-strong); }
+@media(max-width:760px){ .main { grid-template-columns: 1fr; } }
+
+.panel-left { border-right: 1px solid var(--border-strong); padding: 2.5rem 3rem; display: flex; flex-direction: column; gap: 2rem; }
+.section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink); margin-bottom: 0.8rem; display: block; }
+
+.model-select {
+  width: 100%; padding: 1rem 3rem 1rem 1.25rem;
+  background-color: var(--ink); color: var(--cream);
+  border: 2px solid var(--ink); border-radius: 4px;
+  font-family: 'Archivo', sans-serif; font-size: 15px; font-weight: 600;
+  cursor: pointer; appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' fill='none'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23F2EDE4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 1.25rem center;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.model-select:hover { background-color: var(--rust); border-color: var(--rust); }
+.model-select:focus { outline: none; background-color: var(--rust); border-color: var(--rust); }
+.model-select option { background-color: #1a1a1a; color: #F2EDE4; font-size: 15px; }
+
+.upload-wrap { flex: 1; display: flex; flex-direction: column; gap: 0.8rem; }
+.upload-zone {
+  flex: 1; min-height: 300px;
+  border: 2px dashed var(--ink);
+  border-radius: 4px; position: relative;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.upload-zone:hover { border-color: var(--rust); background: rgba(200,75,47,0.04); }
+.upload-zone.dragover { border-color: var(--rust); background: rgba(200,75,47,0.08); }
+.upload-zone input[type=file] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
+.upload-content { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1rem; padding: 2rem; pointer-events: none; }
+.upload-icon { width: 60px; height: 60px; border: 2px solid var(--ink); border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+.upload-icon svg { width: 26px; height: 26px; stroke: var(--ink); }
+.upload-main { font-size: 17px; font-weight: 700; color: var(--ink); }
+.upload-sub { font-size: 13px; font-weight: 400; color: var(--ink); line-height: 1.7; }
+
+#previewImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; pointer-events: none; }
+.preview-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(15,14,12,0.8)); padding: 2rem 1rem 0.75rem; display: none; pointer-events: none; }
+.preview-name { font-size: 13px; font-weight: 600; color: var(--cream); letter-spacing: 0.04em; }
+
+.error-bar { display: none; padding: 0.8rem 1rem; background: rgba(200,75,47,0.1); border: 2px solid var(--rust); border-radius: 4px; font-size: 13px; color: var(--rust); font-weight: 600; margin-bottom: 0.5rem; }
+
+.classify-btn {
+  width: 100%; padding: 1.3rem;
+  background: var(--ink); color: var(--cream);
+  border: none; border-radius: 4px;
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.15em;
+  cursor: pointer; transition: background 0.2s, transform 0.1s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.classify-btn:hover:not(:disabled) { background: var(--rust); }
+.classify-btn:active:not(:disabled) { transform: scale(0.99); }
+.classify-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.spinner { width: 16px; height: 16px; border: 2px solid rgba(242,237,228,0.3); border-top-color: var(--cream); border-radius: 50%; animation: spin 0.6s linear infinite; display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.panel-right { padding: 2.5rem 3rem; display: flex; flex-direction: column; min-height: 500px; }
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.empty-big { font-family: 'Bebas Neue', sans-serif; font-size: 12rem; line-height: 1; color: var(--ink); opacity: 0.06; }
+.empty-label { font-size: 14px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); opacity: 0.4; margin-top: 0.5rem; }
+
+.result { display: none; flex-direction: column; gap: 1.5rem; }
+.result-model { font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--rust); }
+.result-class { font-family: 'Bebas Neue', sans-serif; font-size: clamp(4.5rem, 9vw, 7.5rem); line-height: 0.88; letter-spacing: 0.02em; color: var(--ink); }
+.result-conf-row { display: flex; align-items: baseline; gap: 0.75rem; padding-bottom: 1.5rem; border-bottom: 2px solid var(--ink); }
+.result-conf-num { font-family: 'Bebas Neue', sans-serif; font-size: 2.8rem; color: var(--sage); letter-spacing: 0.05em; }
+.result-conf-label { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); opacity: 0.5; }
+
+.bars { display: flex; flex-direction: column; gap: 16px; }
+.bar-row { display: grid; grid-template-columns: 110px 1fr 58px; align-items: center; gap: 14px; }
+.bar-name { font-size: 14px; font-weight: 600; text-transform: capitalize; text-align: right; color: var(--ink); opacity: 0.5; }
+.bar-name.top { opacity: 1; font-weight: 700; }
+.bar-track { height: 5px; background: rgba(15,14,12,0.12); overflow: hidden; }
+.bar-fill { height: 100%; background: var(--ink); width: 0%; transition: width 0.9s cubic-bezier(0.16,1,0.3,1); }
+.bar-fill.top { background: var(--rust); }
+.bar-pct { font-size: 13px; font-weight: 600; color: var(--ink); opacity: 0.45; }
+.bar-pct.top { opacity: 1; color: var(--rust); font-weight: 700; }
+
+.classes-strip { display: flex; border-top: 2px solid var(--ink); }
+.cls { flex: 1; text-align: center; padding: 1.1rem 0.5rem; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); opacity: 0.3; border-right: 1px solid var(--border-strong); transition: opacity 0.3s, color 0.3s; }
+.cls:last-child { border-right: none; }
+.cls.active { opacity: 1; color: var(--rust); }
+
+footer { padding: 1.5rem 3rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-strong); }
+.footer-left { font-size: 13px; font-weight: 400; color: var(--ink); opacity: 1; }
+.footer-right { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-live"><div class="live-dot"></div>Live - CNN Classifier</div>
+  <div class="header-title">SceneNet</div>
+  <div class="header-nav"><span>PyTorch</span><span>TensorFlow</span><span>6 Classes</span></div>
+</header>
+
+<section class="hero">
+  <p class="hero-eyebrow">Intel Image Classification 2026</p>
+  <h1 class="hero-title">Scene <span class="red">Recognition</span></h1>
+  <div class="hero-meta">
+    <span class="meta-item"><strong>Dataset</strong> Intel Image Classification</span>
+    <span class="meta-item"><strong>Architecture</strong> PyTorch 4-block CNN / TensorFlow 3-block CNN</span>
+    <span class="meta-item"><strong>PyTorch Accuracy</strong> 89.33%</span>
+    <span class="meta-item"><strong>TensorFlow Accuracy</strong> 90.67%</span>
+    <span class="meta-item"><strong>Classes</strong> Buildings / Forest / Glacier / Mountain / Sea / Street</span>
+  </div>
+</section>
+
+<div class="main">
+  <div class="panel-left">
+    <div>
+      <span class="section-label">01. Please Select the Model</span>
+      <select id="modelSelect" class="model-select" onchange="selectedModel=this.value">
+        <option value="pytorch">PyTorch - JoelCNN</option>
+        <option value="tensorflow">TensorFlow - JoelCNN</option>
+      </select>
+    </div>
+
+    <div class="upload-wrap">
+      <span class="section-label">02. Upload Image below</span>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/*">
+        <img id="previewImg" src="" alt="preview">
+        <div class="preview-overlay" id="previewOverlay">
+          <span class="preview-name" id="previewName"></span>
+        </div>
+        <div class="upload-content" id="uploadContent">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p class="upload-main">Drop the image here</p>
+          <p class="upload-sub">JPG / PNG / WEBP / max 50 MB<br>Buildings / Forest / Glacier / Mountain / Sea / Street</p>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="error-bar" id="errorBar"></div>
+      <button class="classify-btn" id="classifyBtn" onclick="classify()" disabled>
+        <div class="spinner" id="spinner"></div>
+        <span id="btnText">Classify Scene</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-big">?</div>
+      <p class="empty-label">Upload an image to classify</p>
+    </div>
+    <div class="result" id="result">
+      <div>
+        <p class="result-model" id="resultModel"></p>
+        <h2 class="result-class" id="resultClass"></h2>
+        <div class="result-conf-row">
+          <span class="result-conf-num" id="resultConf"></span>
+          <span class="result-conf-label">Confidence</span>
+        </div>
+      </div>
+      <div class="bars" id="bars"></div>
+    </div>
+  </div>
+</div>
+
+<div class="classes-strip">
+  <div class="cls" id="c-buildings">Buildings</div>
+  <div class="cls" id="c-forest">Forest</div>
+  <div class="cls" id="c-glacier">Glacier</div>
+  <div class="cls" id="c-mountain">Mountain</div>
+  <div class="cls" id="c-sea">Sea</div>
+  <div class="cls" id="c-street">Street</div>
+</div>
+
+<footer>
+  <span class="footer-left">Computer Vision</span>
+  <span class="footer-right">PyTorch / TensorFlow / Flask</span>
+</footer>
+
+<script>
+const CLASSES = ['buildings','forest','glacier','mountain','sea','street'];
+let selectedModel = 'pytorch';
+let selectedFile  = null;
+const MAX_BYTES   = 50 * 1024 * 1024;
+
+document.getElementById('fileInput').addEventListener('change', function() {
+  if (this.files && this.files[0]) handleFile(this.files[0]);
+});
+
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (file.size > MAX_BYTES) {
+    showError('File too large. Maximum size is 50 MB.');
+    return;
+  }
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('previewImg');
+    img.src = ev.target.result; img.style.display = 'block';
+    document.getElementById('uploadContent').style.opacity = '0';
+    document.getElementById('previewName').textContent = file.name;
+    document.getElementById('previewOverlay').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('classifyBtn').disabled = false;
+  document.getElementById('errorBar').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'flex';
+  CLASSES.forEach(c => document.getElementById('c-'+c).classList.remove('active'));
+}
+
+async function classify() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('classifyBtn');
+  btn.disabled = true;
+  document.getElementById('spinner').style.display = 'block';
+  document.getElementById('btnText').textContent = 'Analysing...';
+  document.getElementById('errorBar').style.display = 'none';
+
+  const form = new FormData();
+  form.append('image', selectedFile);
+  form.append('model', selectedModel);
+
+  try {
+    const res  = await fetch('/predict', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) showError(data.error); else showResult(data);
+  } catch(e) { showError('Request failed. Please try again.'); }
+
+  btn.disabled = false;
+  document.getElementById('spinner').style.display = 'none';
+  document.getElementById('btnText').textContent = 'Classify Scene';
+}
+
+function showError(msg) {
+  const b = document.getElementById('errorBar');
+  b.textContent = msg; b.style.display = 'block';
+}
+
+function showResult(data) {
+  document.getElementById('emptyState').style.display = 'none';
+  const r = document.getElementById('result'); r.style.display = 'flex';
+  document.getElementById('resultModel').textContent = 'Model: ' + data.model_used.toUpperCase();
+  document.getElementById('resultClass').textContent = data.prediction.toUpperCase();
+  document.getElementById('resultConf').textContent  = data.confidence.toFixed(1) + '%';
+  CLASSES.forEach(c => document.getElementById('c-'+c).classList.toggle('active', c===data.prediction));
+
+  const sorted = Object.entries(data.all_probs).sort((a,b) => b[1]-a[1]);
+  const bars   = document.getElementById('bars'); bars.innerHTML = '';
+  sorted.forEach(([cls, pct], i) => {
+    const top = i===0;
+    const row = document.createElement('div'); row.className = 'bar-row';
+    row.innerHTML = `<span class="bar-name ${top?'top':''}">${cls}</span><div class="bar-track"><div class="bar-fill ${top?'top':''}" style="width:0" data-w="${pct}"></div></div><span class="bar-pct ${top?'top':''}">${pct.toFixed(1)}%</span>`;
+    bars.appendChild(row);
+  });
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.bar-fill').forEach(b => b.style.width = b.dataset.w+'%');
+  });
+}
+</script>
+</body>
+</html>
