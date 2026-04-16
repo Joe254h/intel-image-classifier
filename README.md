@@ -1,12 +1,3 @@
----
-title: Scene Image Classifier
-emoji: "🏔️"
-colorFrom: blue
-colorTo: green
-sdk: docker
-pinned: false
-app_port: 8080
----
 
 # Intel Image Classification
 
