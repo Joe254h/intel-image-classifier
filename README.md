@@ -1,8 +1,7 @@
 
 # Intel Image Classification
 
-Joel Sangura Nyongesa  
-AIMS Senegal 2026
+ Joel Nyongesa  
 
 This project implements a complete image classification pipeline for the Intel
 Image Classification dataset using two custom CNN models:
